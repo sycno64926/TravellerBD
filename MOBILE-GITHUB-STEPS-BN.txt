@@ -1,0 +1,56 @@
+TravellingBD APK — শুধু Android ফোন দিয়ে
+
+১) GitHub Repository TravellingBD খুলুন।
+২) Add file → Upload files চাপুন এবং TravellingBD_Android_MVP.zip ফাইলটি মূল repository-তে আপলোড করে Commit changes দিন। এই ZIP-টি Actions workflow নিজে extract করবে; ZIP-টি সরাসরি APK নয়।
+৩) Add file → Create new file চাপুন। ফাইলের নামের ঘরে হুবহু লিখুন:
+.github/workflows/build-apk.yml
+৪) নিচের YAML কনটেন্ট পেস্ট করুন, তারপর Commit changes দিন:
+
+name: Build TravellingBD APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Gradle 8.9
+        run: |
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt
+          echo /opt/gradle-8.9/bin >> "$GITHUB_PATH"
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Prepare project from uploaded ZIP
+        run: |
+          archive="$(find . -maxdepth 1 -type f -name 'TravellingBD_Android_MVP.zip' -print -quit)"
+          if [ -z "$archive" ]; then
+            echo 'Upload TravellingBD_Android_MVP.zip to the repository root.'
+            exit 1
+          fi
+          mkdir -p project
+          unzip -q "$archive" -d project
+      - name: Build debug APK
+        working-directory: project
+        run: gradle --no-daemon assembleDebug
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TravellingBD-APK
+          path: project/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+৫) Repository → Actions খুলুন। “Build TravellingBD APK” workflow নির্বাচন করে Run workflow চাপুন (push করলে নিজেও চলতে পারে)।
+৬) সফল হলে build run-এর পেজে Artifacts থেকে TravellingBD-APK ডাউনলোড করুন। ZIP extract করে app-debug.apk ইনস্টল করুন। Android Settings-এ ওই app/file manager-কে “Install unknown apps” অনুমতি দিতে হতে পারে।
